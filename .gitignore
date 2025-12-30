@@ -34,7 +34,7 @@ ENV/
 data/*.db
 
 # Metadata exports (temporary data)
-data/*.csv
+# data/*.csv
 
 # Local config
 mcp.json
