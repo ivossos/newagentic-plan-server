@@ -1,0 +1,6 @@
+{
+  "enabledMcpjsonServers": [
+    "oracle-epm-fccs"
+  ],
+  "enableAllProjectMcpServers": true
+}

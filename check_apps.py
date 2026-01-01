@@ -24,3 +24,4 @@ async def check_apps():
 if __name__ == "__main__":
     asyncio.run(check_apps())
 
+
