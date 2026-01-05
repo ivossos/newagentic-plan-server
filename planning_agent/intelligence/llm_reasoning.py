@@ -12,6 +12,7 @@ from typing import Dict, List, Any, Optional, Tuple
 from dataclasses import dataclass
 import json
 import os
+import sys
 import asyncio
 from enum import Enum
 
@@ -22,6 +23,7 @@ except ImportError:
     HAS_ANTHROPIC = False
 
 from planning_agent.intelligence.intent_classifier import Intent, IntentType
+from planning_agent.intelligence.expertise import MODULE_EXPERTISE
 
 
 class ReasoningMode(Enum):
@@ -46,7 +48,9 @@ class ReasoningResult:
 
 
 SYSTEM_PROMPTS = {
-    ReasoningMode.INTENT_CLASSIFICATION: """You are an expert at understanding Oracle EPM Cloud Planning (EPBCS) queries.
+    ReasoningMode.INTENT_CLASSIFICATION: f"""You are an expert at understanding Oracle EPM Cloud Planning (EPBCS) queries.
+
+{MODULE_EXPERTISE}
 
 Classify user queries into intents and extract Planning-specific entities (Accounts, Entities, Scenarios, Periods, Versions, Cost Centers, Regions).
 
@@ -63,9 +67,16 @@ Available intents:
 - document_management: Accessing library documents/snapshots
 
 Respond in JSON format only:
-{"intent": "intent_name", "confidence": 0.0-1.0, "entities": {}, "suggested_tools": [], "reasoning": "brief"}""",
+{{
+    "intent": "intent_name", 
+    "confidence": 0.0-1.0, 
+    "entities": {{}}, 
+    "suggested_tools": [], 
+    "reasoning": "brief"
+}}""",
     
-    ReasoningMode.QUERY_UNDERSTANDING: """You are an expert assistant for Oracle EPM Cloud Planning.
+    ReasoningMode.QUERY_UNDERSTANDING: f"""You are an expert assistant for Oracle EPM Cloud Planning.
+{MODULE_EXPERTISE}
 Understand user queries and provide clear, structured responses.
 Be concise but thorough. Use Planning terminology correctly.""",
 
@@ -173,7 +184,7 @@ class LLMReasoner:
                 )
             
         except Exception as e:
-            print(f"LLM classification error: {e}")
+            print(f"LLM classification error: {e}", file=sys.stderr)
         
         return self._fallback_classification(query, entities)
     

@@ -70,7 +70,8 @@ class PlanningIntentClassifier:
                 r"(?:pull|extract).{0,20}(?:data|numbers|figures)",
             ],
             "keywords": ["data", "value", "balance", "amount", "revenue", "profit", "income", 
-                        "expense", "retrieve", "get", "show", "export", "pull", "fetch", "rooms"],
+                        "expense", "retrieve", "get", "show", "export", "pull", "fetch", "rooms",
+                        "headcount", "salary", "compensation", "fte", "project", "asset", "depreciation", "capex"],
             "negative_keywords": ["job", "status", "dimension", "member", "variable", "document"],
             "tools": ["smart_retrieve", "smart_retrieve_revenue", "smart_retrieve_monthly", "export_data_slice"],
             "sub_intents": {
@@ -87,7 +88,8 @@ class PlanningIntentClassifier:
                 r"(?:explore|browse|navigate).{0,20}(?:hierarchy|structure|tree)",
             ],
             "keywords": ["dimension", "member", "hierarchy", "entity", "account", "list", 
-                        "children", "parent", "structure", "metadata", "cost center", "region"],
+                        "children", "parent", "structure", "metadata", "cost center", "region",
+                        "employee", "project", "asset class"],
             "negative_keywords": ["value", "balance", "data", "job"],
             "tools": ["get_dimensions", "get_members", "get_member"],
             "sub_intents": {

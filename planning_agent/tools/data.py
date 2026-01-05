@@ -18,6 +18,56 @@ def set_app_name(app_name: str):
     _app_name = app_name
 
 
+def _build_grid_definition(
+    account: str,
+    entity: str,
+    period: str,
+    years: str,
+    scenario: str,
+    version: str,
+    currency: str,
+    cost_center: str,
+    future1: str,
+    region: str
+) -> dict[str, Any]:
+    """Build the correct grid definition for PlanApp's 10 dimensions.
+    
+    Based on WORKING_FORMAT_DOCUMENTED.md:
+    - POV: 8 dimensions (Entity, Scenario, Years, Version, Currency, Future1, CostCenter, Region)
+    - Columns: Period with "dimensions" key (plural)
+    - Rows: Account with "dimensions" key (plural)
+    
+    The key insight is that rows and columns MUST have "dimensions" (plural) field.
+    """
+    return {
+        "suppressMissingBlocks": True,
+        "pov": {
+            "members": [
+                [entity],        # Entity
+                [scenario],      # Scenario
+                [years],         # Years
+                [version],       # Version
+                [currency],      # Currency
+                [future1],       # Future1
+                [cost_center],   # CostCenter
+                [region]         # Region
+            ]
+        },
+        "columns": [
+            {
+                "dimensions": ["Period"],
+                "members": [[period]]
+            }
+        ],
+        "rows": [
+            {
+                "dimensions": ["Account"],
+                "members": [[account]]
+            }
+        ]
+    }
+
+
 async def export_data_slice(
     plan_type: str,
     grid_definition: dict[str, Any]
@@ -44,16 +94,16 @@ async def smart_retrieve(
     version: str = "Final",
     currency: str = "USD",
     cost_center: str = "CC9999",
-    future1: str = "No Future1",
+    future1: str = "Total Plan",
     region: str = "R131",
     plan_type: str = "FinPlan"
 ) -> dict[str, Any]:
     """Smart data retrieval with automatic 10-dimension handling for PlanApp / Recuperacao inteligente de dados.
 
     PlanApp has 10 dimensions: Years, Period, Scenario, Version, Currency, Entity, CostCenter, Future1, Region, Account.
-    POV order: Years, Period, Scenario, Version, Currency, Entity, CostCenter, Future1
-    Rows: Region
-    Columns: Account
+    POV: Entity, Scenario, Years, Version, Currency, Future1, CostCenter, Region (8 dims)
+    Columns: Period
+    Rows: Account
 
     Args:
         account: The Account member (e.g., '400000', '410000').
@@ -65,37 +115,43 @@ async def smart_retrieve(
         currency: The Currency member (default: 'USD').
         cost_center: The CostCenter member (default: 'CC9999' for rollup). 
             Options: CC1000 (Rooms), CC2000 (F&B), CC3000 (Other), CC4000 (Misc).
-        future1: The Future1 member (default: 'No Future1').
+        future1: The Future1 member (default: 'Total Plan' - Dynamic Calc total).
         region: The Region member (default: 'R131' - Illinois where E501 has data).
         plan_type: The plan type (default: 'FinPlan'). Options: FinPlan, FinRPT.
 
     Returns:
         dict: The retrieved data for the specified dimensions.
     """
-    # Build grid definition for PlanApp's 10 dimensions
-    # Based on memory notes: POV order is Years, Period, Scenario, Version, Currency, Entity, CostCenter, Future1
-    # with Region in rows, Account in columns
-    grid_definition = {
-        "suppressMissingBlocks": True,
-        "pov": [
-            [years],         # Years
-            [period],        # Period  
-            [scenario],      # Scenario
-            [version],       # Version
-            [currency],      # Currency
-            [entity],        # Entity
-            [cost_center],   # CostCenter
-            [future1]        # Future1
-        ],
-        "columns": [[account]],  # Account
-        "rows": [[region]]       # Region
-    }
+    grid_definition = _build_grid_definition(
+        account=account,
+        entity=entity,
+        period=period,
+        years=years,
+        scenario=scenario,
+        version=version,
+        currency=currency,
+        cost_center=cost_center,
+        future1=future1,
+        region=region
+    )
     
     try:
         result = await _client.export_data_slice(_app_name, plan_type, grid_definition)
+        
+        # Extract value from result
+        value = None
+        if result and "rows" in result and len(result["rows"]) > 0:
+            row = result["rows"][0]
+            if "data" in row and len(row["data"]) > 0:
+                try:
+                    value = float(row["data"][0])
+                except (ValueError, TypeError):
+                    value = row["data"][0]
+        
         return {
             "status": "success", 
             "data": result,
+            "value": value,
             "pov": {
                 "years": years,
                 "period": period,
@@ -139,23 +195,20 @@ async def smart_retrieve_revenue(
     
     for account in revenue_accounts:
         try:
-            grid_definition = {
-                "suppressMissingBlocks": True,
-                "pov": [
-                    [years],
-                    [period],
-                    [scenario],
-                    ["Final"],
-                    ["USD"],
-                    [entity],
-                    [cost_center],
-                    ["No Future1"]
-                ],
-                "columns": [[account]],
-                "rows": [["R131"]]
-            }
+            grid_definition = _build_grid_definition(
+                account=account,
+                entity=entity,
+                period=period,
+                years=years,
+                scenario=scenario,
+                version="Final",
+                currency="USD",
+                cost_center=cost_center,
+                future1="Total Plan",
+                region="R131"
+            )
             result = await _client.export_data_slice(_app_name, plan_type, grid_definition)
-            
+
             # Extract value from result
             value = 0.0
             if result and "rows" in result and len(result["rows"]) > 0:
@@ -165,11 +218,11 @@ async def smart_retrieve_revenue(
                         value = float(row["data"][0])
                     except (ValueError, TypeError):
                         value = 0.0
-            
+
             results[account] = value
         except Exception as e:
             results[account] = {"error": str(e)}
-    
+
     return {
         "status": "success",
         "data": {
@@ -214,21 +267,18 @@ async def smart_retrieve_monthly(
     
     for month in months:
         try:
-            grid_definition = {
-                "suppressMissingBlocks": True,
-                "pov": [
-                    [years],
-                    [month],
-                    [scenario],
-                    ["Final"],
-                    ["USD"],
-                    [entity],
-                    [cost_center],
-                    ["No Future1"]
-                ],
-                "columns": [[account]],
-                "rows": [["R131"]]
-            }
+            grid_definition = _build_grid_definition(
+                account=account,
+                entity=entity,
+                period=month,
+                years=years,
+                scenario=scenario,
+                version="Final",
+                currency="USD",
+                cost_center=cost_center,
+                future1="Total Plan",
+                region="R131"
+            )
             result = await _client.export_data_slice(_app_name, plan_type, grid_definition)
             
             # Extract value from result
@@ -300,21 +350,18 @@ async def smart_retrieve_variance(
     
     for key, params in scenarios.items():
         try:
-            grid_definition = {
-                "suppressMissingBlocks": True,
-                "pov": [
-                    [params["years"]],
-                    [period],
-                    [params["scenario"]],
-                    ["Final"],
-                    ["USD"],
-                    [entity],
-                    [cost_center],
-                    ["No Future1"]
-                ],
-                "columns": [[account]],
-                "rows": [["R131"]]
-            }
+            grid_definition = _build_grid_definition(
+                account=account,
+                entity=entity,
+                period=period,
+                years=params["years"],
+                scenario=params["scenario"],
+                version="Final",
+                currency="USD",
+                cost_center=cost_center,
+                future1="Total Plan",
+                region="R131"
+            )
             result = await _client.export_data_slice(_app_name, plan_type, grid_definition)
             
             # Extract value from result
@@ -484,7 +531,7 @@ TOOL_DEFINITIONS = [
                 },
                 "future1": {
                     "type": "string",
-                    "description": "The Future1 member (default: 'No Future1').",
+                    "description": "The Future1 member (default: 'Total Plan' - Dynamic Calc total).",
                 },
                 "region": {
                     "type": "string",

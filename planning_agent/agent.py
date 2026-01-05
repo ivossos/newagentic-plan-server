@@ -26,8 +26,12 @@ _app_name: Optional[str] = None
 _session_state: dict[str, dict[str, Any]] = {}  # Track session state for RL
 _orchestrator: Optional[PlanningOrchestrator] = None
 
+from planning_agent.intelligence.expertise import SYSTEM_PROMPT_ADDITION, MODULE_EXPERTISE
+
 # Agent instruction
-AGENT_INSTRUCTION = """You are an expert assistant for Oracle EPM Cloud Planning (EPBCS).
+AGENT_INSTRUCTION = f"""You are an expert assistant for Oracle EPM Cloud Planning (EPBCS).
+
+{SYSTEM_PROMPT_ADDITION}
 
 You help users with:
 - Querying financial data (Revenue, Expense, Net Income) from Planning cubes
