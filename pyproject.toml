@@ -21,6 +21,7 @@ dependencies = [
     "numpy>=1.24.0",
     "streamlit>=1.30.0",
     "pandas>=2.0.0",
+    "prompt_toolkit>=3.0.0",
 ]
 
 [project.optional-dependencies]
@@ -32,6 +33,7 @@ dev = [
 
 [project.scripts]
 planning-fastmcp-stdio = "cli.fastmcp_stdio:main"
+planning-interactive = "cli.interactive:main"
 
 [build-system]
 requires = ["hatchling"]

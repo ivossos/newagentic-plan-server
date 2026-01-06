@@ -18,7 +18,7 @@ from planning_agent.services.rl_service import (
 from planning_agent.intelligence.orchestrator import PlanningOrchestrator
 
 # Import all tool modules
-from planning_agent.tools import application, jobs, dimensions, data, variables, documents, snapshots, feedback
+from planning_agent.tools import application, jobs, dimensions, data, variables, documents, snapshots, feedback, discovery
 
 # Global state
 _planning_client: Optional[PlanningClient] = None
@@ -53,6 +53,15 @@ Available tools:
 - get_documents, get_snapshots: Library management
 - submit_feedback, rate_last_tool, get_rle_dashboard: Feedback and RL performance
 - agentic_query: Full reasoning pipeline for complex natural language queries
+
+Discovery tools for custom/freeform apps (start here if you don't know the app structure):
+- discover_app_structure: Discover all dimensions, types, and plan types in any custom app
+- explore_dimension: Navigate dimension hierarchies to understand structure
+- find_members: Search for members by name or alias across dimensions
+- build_dynamic_grid: Auto-construct grid definitions for any dimension structure
+- profile_data: Sample data to find where values exist in the application
+- smart_retrieve_dynamic: Query data from any custom app with dynamic dimension handling
+- export_app_metadata: Export full metadata for offline analysis
 """
 
 
@@ -86,6 +95,7 @@ async def initialize_agent(cfg: Optional[PlanningConfig] = None) -> str:
     variables.set_client(_planning_client)
     documents.set_client(_planning_client)
     snapshots.set_client(_planning_client)
+    discovery.set_client(_planning_client)
     # feedback tool doesn't need client, it uses services
 
     # Initialize feedback service
@@ -121,6 +131,7 @@ async def initialize_agent(cfg: Optional[PlanningConfig] = None) -> str:
             data.set_app_name(_app_name)
             variables.set_app_name(_app_name)
             documents.set_app_name(_app_name)
+            discovery.set_app_name(_app_name)
 
             return _app_name
         return "Connected (no apps found)"
@@ -233,6 +244,14 @@ TOOL_HANDLERS = {
     "rate_last_tool": feedback.rate_last_tool,
     "get_rle_dashboard": feedback.get_rle_dashboard,
     "agentic_query": agentic_query,
+    # Discovery tools for custom/freeform apps
+    "discover_app_structure": discovery.discover_app_structure,
+    "explore_dimension": discovery.explore_dimension,
+    "find_members": discovery.find_members,
+    "build_dynamic_grid": discovery.build_dynamic_grid,
+    "profile_data": discovery.profile_data,
+    "smart_retrieve_dynamic": discovery.smart_retrieve_dynamic,
+    "export_app_metadata": discovery.export_app_metadata,
 }
 
 ALL_TOOL_DEFINITIONS = (
@@ -244,6 +263,7 @@ ALL_TOOL_DEFINITIONS = (
     documents.TOOL_DEFINITIONS +
     snapshots.TOOL_DEFINITIONS +
     feedback.TOOL_DEFINITIONS +
+    discovery.TOOL_DEFINITIONS +
     [AGENTIC_TOOL_DEFINITION]
 )
 
@@ -284,7 +304,12 @@ async def execute_tool(
             execution_id = after_tool_callback(session_id, tool_name, arguments, result)
             if execution_id and execution_id > 0:
                 result["execution_id"] = execution_id
-            
+                # Add feedback hint for RL rating
+                result["_feedback_hint"] = (
+                    f"Was this helpful? Rate with: rate_last_tool('good') or rate_last_tool('bad') "
+                    f"or submit_feedback(execution_id={execution_id}, rating=1-5)"
+                )
+
             rl_service = get_rl_service()
             if rl_service and use_rl:
                 # Simple policy update could go here
