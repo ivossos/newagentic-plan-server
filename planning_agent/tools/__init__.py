@@ -1,4 +1,4 @@
-"""Planning ADK Tools - 25+ tools for Oracle Planning operations."""
+"""Planning ADK Tools - 30+ tools for Oracle Planning operations."""
 
 from planning_agent.tools import (
     application,
@@ -8,6 +8,9 @@ from planning_agent.tools import (
     variables,
     documents,
     snapshots,
+    feedback,
+    discovery,
+    inference,
 )
 
 __all__ = [
@@ -18,6 +21,7 @@ __all__ = [
     "variables",
     "documents",
     "snapshots",
+    "feedback",
+    "discovery",
+    "inference",
 ]
-
-

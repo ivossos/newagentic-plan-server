@@ -18,7 +18,7 @@ from planning_agent.services.rl_service import (
 from planning_agent.intelligence.orchestrator import PlanningOrchestrator
 
 # Import all tool modules
-from planning_agent.tools import application, jobs, dimensions, data, variables, documents, snapshots, feedback, discovery
+from planning_agent.tools import application, jobs, dimensions, data, variables, documents, snapshots, feedback, discovery, inference
 
 # Global state
 _planning_client: Optional[PlanningClient] = None
@@ -96,6 +96,7 @@ async def initialize_agent(cfg: Optional[PlanningConfig] = None) -> str:
     documents.set_client(_planning_client)
     snapshots.set_client(_planning_client)
     discovery.set_client(_planning_client)
+    inference.set_client(_planning_client)
     # feedback tool doesn't need client, it uses services
 
     # Initialize feedback service
@@ -132,6 +133,7 @@ async def initialize_agent(cfg: Optional[PlanningConfig] = None) -> str:
             variables.set_app_name(_app_name)
             documents.set_app_name(_app_name)
             discovery.set_app_name(_app_name)
+            inference.set_app_name(_app_name)
 
             return _app_name
         return "Connected (no apps found)"
@@ -252,6 +254,13 @@ TOOL_HANDLERS = {
     "profile_data": discovery.profile_data,
     "smart_retrieve_dynamic": discovery.smart_retrieve_dynamic,
     "export_app_metadata": discovery.export_app_metadata,
+    # Inference tools (semantic matching, data discovery)
+    "smart_infer": inference.smart_infer,
+    "infer_member": inference.infer_member,
+    "infer_hierarchy": inference.infer_hierarchy,
+    "infer_valid_pov": inference.infer_valid_pov,
+    "load_metadata_cache": inference.load_metadata_cache,
+    "get_cache_stats": inference.get_cache_stats,
 }
 
 ALL_TOOL_DEFINITIONS = (
@@ -264,6 +273,7 @@ ALL_TOOL_DEFINITIONS = (
     snapshots.TOOL_DEFINITIONS +
     feedback.TOOL_DEFINITIONS +
     discovery.TOOL_DEFINITIONS +
+    inference.TOOL_DEFINITIONS +
     [AGENTIC_TOOL_DEFINITION]
 )
 
