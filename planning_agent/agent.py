@@ -25,6 +25,7 @@ _planning_client: Optional[PlanningClient] = None
 _app_name: Optional[str] = None
 _session_state: dict[str, dict[str, Any]] = {}  # Track session state for RL
 _orchestrator: Optional[PlanningOrchestrator] = None
+_pipeline = None  # Agentic pipeline with ADK adapter
 
 from planning_agent.intelligence.expertise import SYSTEM_PROMPT_ADDITION, MODULE_EXPERTISE
 
@@ -334,7 +335,33 @@ async def execute_tool(
         return error_result
 
 
+def get_pipeline():
+    """Get or create the agentic pipeline with ADK/Gemini support.
+    
+    Uses Google's Gemini model for intelligent function calling to plan
+    multi-step tool execution based on natural language queries.
+    """
+    global _pipeline
+    if _pipeline is None:
+        from planning_agent.pipeline.adk_adapter import load_adk_adapter
+        from planning_agent.pipeline.adk_planner import AdkPlanner
+        from planning_agent.pipeline.engine import AgenticPipeline
+        from planning_agent.pipeline.heuristic_planner import HeuristicPlanner
+        from planning_agent.pipeline.registry import ToolRegistry
+
+        adapter = load_adk_adapter(config.model_id, config.google_api_key)
+        if adapter:
+            planner = AdkPlanner(adapter)
+        else:
+            planner = HeuristicPlanner()
+
+        registry = ToolRegistry(ALL_TOOL_DEFINITIONS, execute_tool)
+        _pipeline = AgenticPipeline(planner, registry)
+    return _pipeline
+
+
 def finalize_session(session_id: str, outcome: str = "success"):
+    """Finalize a session and log episode for RL learning."""
     if session_id not in _session_state: return
     session_state = _session_state[session_id]
     tool_sequence = session_state.get("tool_sequence", [])
@@ -348,4 +375,5 @@ def finalize_session(session_id: str, outcome: str = "success"):
 
 
 def get_tool_definitions() -> list[dict]:
+    """Get all tool definitions for MCP server."""
     return ALL_TOOL_DEFINITIONS

@@ -10,6 +10,7 @@ authors = [
 ]
 
 dependencies = [
+    "google-adk>=1.0.0",
     "mcp>=1.0.0",
     "fastapi>=0.115.0",
     "uvicorn>=0.32.0",
