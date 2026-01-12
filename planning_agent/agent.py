@@ -1,4 +1,4 @@
-"""ADK Agent - Main agent definition with all Planning tools."""
+"""Claude Agent - Main agent definition with all Planning tools."""
 
 import sys
 from typing import Any, Optional
@@ -25,7 +25,7 @@ _planning_client: Optional[PlanningClient] = None
 _app_name: Optional[str] = None
 _session_state: dict[str, dict[str, Any]] = {}  # Track session state for RL
 _orchestrator: Optional[PlanningOrchestrator] = None
-_pipeline = None  # Agentic pipeline with ADK adapter
+_pipeline = None  # Agentic pipeline with Claude adapter
 
 from planning_agent.intelligence.expertise import SYSTEM_PROMPT_ADDITION, MODULE_EXPERTISE
 
@@ -336,22 +336,22 @@ async def execute_tool(
 
 
 def get_pipeline():
-    """Get or create the agentic pipeline with ADK/Gemini support.
-    
-    Uses Google's Gemini model for intelligent function calling to plan
+    """Get or create the agentic pipeline with Claude Agent SDK support.
+
+    Uses Anthropic's Claude model for intelligent function calling to plan
     multi-step tool execution based on natural language queries.
     """
     global _pipeline
     if _pipeline is None:
-        from planning_agent.pipeline.adk_adapter import load_adk_adapter
-        from planning_agent.pipeline.adk_planner import AdkPlanner
+        from planning_agent.pipeline.claude_adapter import load_claude_adapter
+        from planning_agent.pipeline.claude_planner import ClaudePlanner
         from planning_agent.pipeline.engine import AgenticPipeline
         from planning_agent.pipeline.heuristic_planner import HeuristicPlanner
         from planning_agent.pipeline.registry import ToolRegistry
 
-        adapter = load_adk_adapter(config.model_id, config.google_api_key)
+        adapter = load_claude_adapter(config.claude_model, config.anthropic_api_key)
         if adapter:
-            planner = AdkPlanner(adapter)
+            planner = ClaudePlanner(adapter)
         else:
             planner = HeuristicPlanner()
 

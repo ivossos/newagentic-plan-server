@@ -22,10 +22,9 @@ class PlanningConfig(BaseSettings):
         alias="DATABASE_URL"
     )
 
-    # Models
-    google_api_key: Optional[str] = Field(None, alias="GOOGLE_API_KEY")
+    # Models - Claude Agent SDK
     anthropic_api_key: Optional[str] = Field(None, alias="ANTHROPIC_API_KEY")
-    model_id: str = Field("gemini-2.0-flash", alias="MODEL_ID")
+    claude_model: str = Field("claude-opus-4-5-20251101", alias="CLAUDE_MODEL")
 
     # Server
     fastmcp_host: str = Field("127.0.0.1", alias="FASTMCP_HOST")

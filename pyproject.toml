@@ -1,5 +1,5 @@
 [project]
-name = "fastmcp-plan-agent"
+name = "newagentic-plan-server"
 version = "0.1.0"
 description = "FastMCP agentic MCP server for Oracle EPM Planning"
 readme = "README.md"
@@ -10,7 +10,7 @@ authors = [
 ]
 
 dependencies = [
-    "google-adk>=1.0.0",
+    "claude-agent-sdk>=0.1.19",
     "mcp>=1.0.0",
     "fastapi>=0.115.0",
     "uvicorn>=0.32.0",
