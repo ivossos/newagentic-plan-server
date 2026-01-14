@@ -11,6 +11,7 @@ from planning_agent.tools import (
     feedback,
     discovery,
     inference,
+    valid_intersections,
 )
 
 __all__ = [
@@ -24,4 +25,5 @@ __all__ = [
     "feedback",
     "discovery",
     "inference",
+    "valid_intersections",
 ]

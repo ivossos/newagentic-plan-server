@@ -17,10 +17,13 @@ COPY planning_agent/ planning_agent/
 COPY web/ web/
 COPY cli/ cli/
 
-# Set environment variables
+# Create data directory for SQLite
+RUN mkdir -p /app/data
+
+# Set environment variables (credentials and settings passed at deploy time)
 ENV PORT=8080
 ENV PYTHONUNBUFFERED=1
-ENV PLANNING_MOCK_MODE=true
+ENV DATABASE_URL=sqlite:///./data/planning_agent.db
 
 # Expose port (Cloud Run will set PORT env var)
 EXPOSE 8080

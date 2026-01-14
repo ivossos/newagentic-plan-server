@@ -93,6 +93,7 @@ async def health():
 @app.get("/.well-known/mcp.json")
 async def mcp_discovery():
     """MCP server discovery endpoint."""
+    base_url = os.environ.get("SERVICE_URL", "https://planning-agent-claude-241840460713.us-central1.run.app")
     return {
         "info": {
             "title": "Oracle EPM Planning Agent",
@@ -100,7 +101,7 @@ async def mcp_discovery():
             "description": "Oracle EPM Planning Agent with MCP support for querying financial data"
         },
         "servers": [
-            "https://fastmcp-plan-agent-241840460713.us-central1.run.app/mcp"
+            f"{base_url}/mcp"
         ]
     }
 
@@ -152,6 +153,7 @@ async def openapi_spec():
             }
         }
 
+    base_url = os.environ.get("SERVICE_URL", "https://planning-agent-claude-241840460713.us-central1.run.app")
     return {
         "openapi": "3.1.0",
         "info": {
@@ -160,7 +162,7 @@ async def openapi_spec():
             "description": "Oracle EPM Planning Agent API for querying financial data from EPBCS"
         },
         "servers": [
-            {"url": "https://fastmcp-plan-agent-241840460713.us-central1.run.app"}
+            {"url": base_url}
         ],
         "paths": paths
     }

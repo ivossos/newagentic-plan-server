@@ -1,0 +1,102 @@
+{
+  "metadata": {
+    "application": "PlanApp",
+    "plan_types": ["FinPlan", "FinRPT"],
+    "updated_at": "2026-01-14",
+    "version": "1.0"
+  },
+  "defaults": {
+    "scenario": "Actual",
+    "years": "FY25",
+    "period": "YearTotal",
+    "version": "Final",
+    "currency": "USD",
+    "future1": "Total Plan",
+    "region": "R131",
+    "account": "400000"
+  },
+  "entity_mappings": {
+    "E501": {
+      "alias": "501-L7 Chicago Hotel",
+      "parent": "E500",
+      "valid_cost_centers": ["CC1121"],
+      "valid_regions": ["R131"],
+      "valid_accounts": ["400000", "410000", "420000", "710100", "710110", "710120", "710130", "710140", "911000", "912"],
+      "has_data": true,
+      "confidence": "high"
+    },
+    "E502": {
+      "alias": "502-L7 Chicago Hotel 2",
+      "parent": "E500",
+      "valid_cost_centers": ["CC2110"],
+      "valid_regions": ["R131"],
+      "valid_accounts": ["400000", "410000", "420000"],
+      "has_data": true,
+      "confidence": "high"
+    },
+    "E503": {
+      "alias": "503-L7 Chicago Hotel 3",
+      "parent": "E500",
+      "valid_cost_centers": [],
+      "valid_regions": ["R131"],
+      "valid_accounts": [],
+      "has_data": false,
+      "confidence": "high"
+    },
+    "E101": {
+      "alias": "101-NY Hotel",
+      "parent": "E100",
+      "valid_cost_centers": [],
+      "valid_regions": [],
+      "valid_accounts": [],
+      "has_data": false,
+      "confidence": "medium"
+    },
+    "E102": {
+      "alias": "102-Seattle Hotel",
+      "parent": "E100",
+      "valid_cost_centers": [],
+      "valid_regions": [],
+      "valid_accounts": [],
+      "has_data": false,
+      "confidence": "medium"
+    },
+    "E801": {
+      "alias": "801-SG Hotel 1",
+      "parent": "E800",
+      "valid_cost_centers": [],
+      "valid_regions": [],
+      "valid_accounts": [],
+      "has_data": false,
+      "confidence": "medium"
+    },
+    "E901": {
+      "alias": "901-Elim Hotel",
+      "parent": "E900",
+      "valid_cost_centers": [],
+      "valid_regions": [],
+      "valid_accounts": [],
+      "has_data": false,
+      "confidence": "medium"
+    }
+  },
+  "cost_center_departments": {
+    "CC1000": "Rooms",
+    "CC1121": "Rooms - Sub",
+    "CC2000": "F&B",
+    "CC2110": "F&B - Sub",
+    "CC2210": "F&B - Sub 2",
+    "CC2300": "F&B - Sub 3",
+    "CC2410": "F&B - Sub 4",
+    "CC3000": "Other",
+    "CC4000": "Misc",
+    "CC9999": "All CostCenters (rollup)"
+  },
+  "region_mappings": {
+    "R131": {
+      "alias": "Illinois",
+      "parent": "US",
+      "level": "Lvl0"
+    }
+  }
+}

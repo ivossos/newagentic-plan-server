@@ -29,7 +29,8 @@ __pycache__/
 *.log
 *.db
 
-# Ignore docs and unnecessary files
+# Ignore docs and unnecessary files (except README.md needed for pip install)
 *.md
+!README.md
 *.bak
 .claude/

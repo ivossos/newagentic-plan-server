@@ -1,0 +1,97 @@
+ORACLE EPM PLANNING AGENT - DEMO PROMPTS
+========================================
+
+--- APPLICATION & DIMENSIONS ---
+
+What Planning application am I connected to? Show me the details.
+
+What dimensions are available in this Planning application?
+
+Show me the Entity hierarchy - what hotels and properties do we have?
+
+
+--- REVENUE & FINANCIAL DATA ---
+
+What is the total revenue for Chicago in December 2024?
+
+Break down Chicago's December revenue by segment - Rooms, F&B, and Other
+
+Show me Chicago's monthly revenue trend for Q4 2024 - October through December
+
+Compare total revenue across all Asian hotels for December 2024
+
+
+--- VARIANCE ANALYSIS ---
+
+Compare Chicago's Actual vs Forecast revenue for December 2024
+
+Why is Chicago's December revenue different from forecast? Break it down by revenue stream.
+
+How does Chicago's Q4 2024 revenue compare to Q4 2023?
+
+Which entities have more than 10% variance from forecast in December?
+
+Give me a complete variance summary for December 2024:
+- Actual vs Forecast by region
+- Top 3 favorable variances
+- Top 3 unfavorable variances
+- Overall variance percentage
+
+
+--- DIMENSION EXPLORATION ---
+
+Show me the Account dimension hierarchy - what rolls up to Total Revenue?
+
+Find all accounts related to "Operating Expenses" or "OPEX"
+
+Tell me about account 411110 - what is it and where does it roll up?
+
+Discover the complete structure of this Planning application - all dimensions, plan types, and sample members
+
+
+--- JOBS & BUSINESS RULES ---
+
+Show me the recent jobs - what calculations have been run?
+
+What's the status of the last aggregation job?
+
+What business rules are available to run in this application?
+
+What would happen if I run the Aggregate rule for Americas region?
+
+
+--- VARIABLES & CONFIGURATION ---
+
+What substitution variables are defined? Show me the current values.
+
+What is the current planning period based on the substitution variables?
+
+What would be the impact of changing CurMonth from Dec to Jan?
+
+
+--- SMART INFERENCE ---
+
+I want to see "Chicago hotel rooms revenue for last quarter" - figure out the right members
+
+What member matches "food and beverage" in the Account dimension?
+
+What's a valid POV for retrieving Chicago's December Actual data?
+
+
+--- ADVANCED MULTI-STEP QUERIES ---
+
+Give me a complete financial summary for Chicago Q4 2024:
+- Total Revenue by segment
+- Total Operating Expenses
+- Net Operating Income
+- Comparison to Forecast
+- Comparison to Prior Year Q4
+
+Why is our total company Net Income down 15% from forecast? Which regions and segments are driving this?
+
+If Chicago's Rooms revenue increased by 10%, what would be the impact on total Americas revenue?
+
+What's the status of our Q1 2025 forecast cycle?
+- Are all entities submitted?
+- Any data quality issues?
+- What's the timeline to close?

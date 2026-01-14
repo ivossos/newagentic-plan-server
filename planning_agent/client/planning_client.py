@@ -426,4 +426,128 @@ class PlanningClient:
         # For now, return mock data
         return MOCK_SNAPSHOTS
 
+    # ========== Valid Intersections Methods ==========
+
+    async def export_valid_intersections(
+        self,
+        app_name: str,
+        file_name: str = "ValidIntersections.zip",
+        names: Optional[str] = None
+    ) -> dict[str, Any]:
+        """Export valid intersection groups to a ZIP file / Exportar grupos de intersecoes validas.
+
+        Args:
+            app_name: Application name.
+            file_name: Output ZIP file name (stored in Outbox).
+            names: Comma-separated list of valid intersection names to export.
+                   If None, exports all valid intersections.
+
+        Returns:
+            dict: Job submission result with jobId and status.
+        """
+        if self.config.planning_mock_mode:
+            return {
+                "jobId": "501",
+                "status": "Submitted",
+                "jobType": "Export Valid Intersections",
+                "jobName": "ExportVIJob",
+                "parameters": {"fileName": file_name, "names": names}
+            }
+
+        payload = {
+            "jobType": "Export Valid Intersections",
+            "jobName": "ExportVIJob",
+            "parameters": {"fileName": file_name}
+        }
+        if names:
+            payload["parameters"]["names"] = names
+
+        response = await self._client.post(
+            f"/{app_name}/jobs{self._get_query_params()}",
+            json=payload
+        )
+        response.raise_for_status()
+        return response.json()
+
+    async def import_valid_intersections(
+        self,
+        app_name: str,
+        file_name: str,
+        error_file: Optional[str] = None
+    ) -> dict[str, Any]:
+        """Import valid intersection groups from a ZIP file / Importar grupos de intersecoes validas.
+
+        Args:
+            app_name: Application name.
+            file_name: ZIP file name containing Excel file with valid intersection definitions.
+                       File must be in the Inbox.
+            error_file: Optional error log file name (stored in Outbox).
+
+        Returns:
+            dict: Job submission result with jobId and status.
+        """
+        if self.config.planning_mock_mode:
+            return {
+                "jobId": "502",
+                "status": "Submitted",
+                "jobType": "Import Valid Intersections",
+                "jobName": "ImportVIJob",
+                "parameters": {"fileName": file_name, "errorFile": error_file}
+            }
+
+        payload = {
+            "jobType": "Import Valid Intersections",
+            "jobName": "ImportVIJob",
+            "parameters": {"fileName": file_name}
+        }
+        if error_file:
+            payload["parameters"]["errorFile"] = error_file
+
+        response = await self._client.post(
+            f"/{app_name}/jobs{self._get_query_params()}",
+            json=payload
+        )
+        response.raise_for_status()
+        return response.json()
+
+    async def get_valid_intersection_groups(
+        self,
+        app_name: str
+    ) -> dict[str, Any]:
+        """Get valid intersection groups metadata / Obter metadata de grupos de intersecoes validas.
+
+        Note: This requires exporting valid intersections first, then parsing the Excel file.
+        For now, returns cached/discovered intersections from the metadata cache.
+
+        Args:
+            app_name: Application name.
+
+        Returns:
+            dict: Valid intersection groups information.
+        """
+        if self.config.planning_mock_mode:
+            return {
+                "items": [
+                    {
+                        "name": "EntityCostCenterRegion",
+                        "description": "Valid Entity-CostCenter-Region combinations",
+                        "dimensions": ["Entity", "CostCenter", "Region"],
+                        "enabled": True
+                    },
+                    {
+                        "name": "AccountPeriod",
+                        "description": "Valid Account-Period combinations",
+                        "dimensions": ["Account", "Period"],
+                        "enabled": True
+                    }
+                ]
+            }
+
+        # EPM doesn't have a direct REST endpoint to list valid intersection groups
+        # We need to export them first
+        return {
+            "items": [],
+            "note": "Use export_valid_intersections to get valid intersection definitions"
+        }
+
 

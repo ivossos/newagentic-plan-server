@@ -64,6 +64,38 @@ class MetadataCache:
                     UNIQUE(entity, cost_center, region, account)
                 )
             """)
+
+            # Flexible valid intersections table for any dimension combination
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS valid_intersection_rules (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    rule_name TEXT NOT NULL,
+                    dimensions TEXT NOT NULL,
+                    members_json TEXT NOT NULL,
+                    is_valid INTEGER DEFAULT 1,
+                    has_data INTEGER DEFAULT 0,
+                    sample_value TEXT,
+                    last_checked TEXT,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(rule_name, members_json)
+                )
+            """)
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_rule_name ON valid_intersection_rules(rule_name)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_dimensions ON valid_intersection_rules(dimensions)")
+
+            # Valid intersection groups metadata
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS valid_intersection_groups (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    group_name TEXT NOT NULL UNIQUE,
+                    description TEXT,
+                    dimensions TEXT NOT NULL,
+                    enabled INTEGER DEFAULT 1,
+                    source TEXT DEFAULT 'discovered',
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TEXT
+                )
+            """)
             conn.commit()
     
     def load_dimension_from_csv(self, dimension: str, csv_path: Optional[Path] = None) -> int:
@@ -321,7 +353,222 @@ class MetadataCache:
             stats["dimensions"] = {row[0]: {"total": row[1], "leaves": row[2]} for row in rows}
             row = conn.execute("SELECT COUNT(*) FROM valid_intersections WHERE has_data = 1").fetchone()
             stats["valid_intersections"] = row[0]
+            row = conn.execute("SELECT COUNT(*) FROM valid_intersection_rules WHERE is_valid = 1").fetchone()
+            stats["valid_intersection_rules"] = row[0] if row else 0
+            row = conn.execute("SELECT COUNT(*) FROM valid_intersection_groups").fetchone()
+            stats["valid_intersection_groups"] = row[0] if row else 0
         return stats
+
+    # ========== Flexible Valid Intersection Methods ==========
+
+    def save_intersection_rule(
+        self,
+        rule_name: str,
+        members: Dict[str, str],
+        is_valid: bool = True,
+        has_data: bool = False,
+        sample_value: Optional[str] = None
+    ):
+        """Save a flexible valid intersection rule.
+
+        Args:
+            rule_name: Name of the intersection rule/group.
+            members: Dictionary mapping dimension names to member names.
+            is_valid: Whether this intersection is valid.
+            has_data: Whether this intersection has data.
+            sample_value: Optional sample value found at this intersection.
+        """
+        dimensions = ",".join(sorted(members.keys()))
+        members_json = json.dumps(members, sort_keys=True)
+
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute("""
+                INSERT OR REPLACE INTO valid_intersection_rules
+                (rule_name, dimensions, members_json, is_valid, has_data, sample_value, last_checked)
+                VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+            """, (rule_name, dimensions, members_json, 1 if is_valid else 0, 1 if has_data else 0, sample_value))
+            conn.commit()
+
+    def get_intersection_rules(
+        self,
+        rule_name: Optional[str] = None,
+        dimensions: Optional[List[str]] = None,
+        only_valid: bool = True,
+        only_with_data: bool = False
+    ) -> List[Dict[str, Any]]:
+        """Get flexible valid intersection rules.
+
+        Args:
+            rule_name: Filter by rule name.
+            dimensions: Filter by dimensions involved.
+            only_valid: Only return valid intersections.
+            only_with_data: Only return intersections with data.
+
+        Returns:
+            List of intersection rules.
+        """
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            conditions = []
+            params = []
+
+            if rule_name:
+                conditions.append("rule_name = ?")
+                params.append(rule_name)
+            if dimensions:
+                dim_str = ",".join(sorted(dimensions))
+                conditions.append("dimensions = ?")
+                params.append(dim_str)
+            if only_valid:
+                conditions.append("is_valid = 1")
+            if only_with_data:
+                conditions.append("has_data = 1")
+
+            where_clause = " AND ".join(conditions) if conditions else "1=1"
+            rows = conn.execute(
+                f"SELECT * FROM valid_intersection_rules WHERE {where_clause} ORDER BY last_checked DESC",
+                params
+            ).fetchall()
+
+        results = []
+        for row in rows:
+            result = dict(row)
+            result["members"] = json.loads(result["members_json"])
+            del result["members_json"]
+            result["is_valid"] = bool(result["is_valid"])
+            result["has_data"] = bool(result["has_data"])
+            results.append(result)
+
+        return results
+
+    def check_intersection_rule(
+        self,
+        members: Dict[str, str],
+        rule_name: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        """Check if a specific member combination exists in rules.
+
+        Args:
+            members: Dictionary mapping dimension names to member names.
+            rule_name: Optional rule name to filter by.
+
+        Returns:
+            The matching rule if found, None otherwise.
+        """
+        members_json = json.dumps(members, sort_keys=True)
+
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            if rule_name:
+                row = conn.execute(
+                    "SELECT * FROM valid_intersection_rules WHERE rule_name = ? AND members_json = ?",
+                    (rule_name, members_json)
+                ).fetchone()
+            else:
+                row = conn.execute(
+                    "SELECT * FROM valid_intersection_rules WHERE members_json = ?",
+                    (members_json,)
+                ).fetchone()
+
+        if row:
+            result = dict(row)
+            result["members"] = json.loads(result["members_json"])
+            del result["members_json"]
+            result["is_valid"] = bool(result["is_valid"])
+            result["has_data"] = bool(result["has_data"])
+            return result
+        return None
+
+    def save_intersection_group(
+        self,
+        group_name: str,
+        dimensions: List[str],
+        description: Optional[str] = None,
+        enabled: bool = True,
+        source: str = "discovered"
+    ):
+        """Save a valid intersection group definition.
+
+        Args:
+            group_name: Unique name for the group.
+            dimensions: List of dimension names in the group.
+            description: Optional description of the group.
+            enabled: Whether the group is enabled.
+            source: Source of the group (discovered, imported, manual).
+        """
+        dimensions_str = ",".join(sorted(dimensions))
+
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute("""
+                INSERT OR REPLACE INTO valid_intersection_groups
+                (group_name, description, dimensions, enabled, source, updated_at)
+                VALUES (?, ?, ?, ?, ?, datetime('now'))
+            """, (group_name, description, dimensions_str, 1 if enabled else 0, source))
+            conn.commit()
+
+    def get_intersection_groups(self, only_enabled: bool = True) -> List[Dict[str, Any]]:
+        """Get all valid intersection groups.
+
+        Args:
+            only_enabled: Only return enabled groups.
+
+        Returns:
+            List of intersection groups.
+        """
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            if only_enabled:
+                rows = conn.execute(
+                    "SELECT * FROM valid_intersection_groups WHERE enabled = 1 ORDER BY group_name"
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT * FROM valid_intersection_groups ORDER BY group_name"
+                ).fetchall()
+
+        results = []
+        for row in rows:
+            result = dict(row)
+            result["dimensions"] = result["dimensions"].split(",")
+            result["enabled"] = bool(result["enabled"])
+            results.append(result)
+
+        return results
+
+    def delete_intersection_rules(
+        self,
+        rule_name: Optional[str] = None,
+        older_than_days: Optional[int] = None
+    ) -> int:
+        """Delete intersection rules.
+
+        Args:
+            rule_name: Delete rules with this name.
+            older_than_days: Delete rules older than this many days.
+
+        Returns:
+            Number of rows deleted.
+        """
+        with sqlite3.connect(self.db_path) as conn:
+            if rule_name and older_than_days:
+                result = conn.execute(
+                    "DELETE FROM valid_intersection_rules WHERE rule_name = ? AND last_checked < datetime('now', ?)",
+                    (rule_name, f"-{older_than_days} days")
+                )
+            elif rule_name:
+                result = conn.execute(
+                    "DELETE FROM valid_intersection_rules WHERE rule_name = ?",
+                    (rule_name,)
+                )
+            elif older_than_days:
+                result = conn.execute(
+                    "DELETE FROM valid_intersection_rules WHERE last_checked < datetime('now', ?)",
+                    (f"-{older_than_days} days",)
+                )
+            else:
+                result = conn.execute("DELETE FROM valid_intersection_rules")
+            conn.commit()
+            return result.rowcount
 
 
 _cache: Optional[MetadataCache] = None

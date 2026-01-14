@@ -18,7 +18,7 @@ from planning_agent.services.rl_service import (
 from planning_agent.intelligence.orchestrator import PlanningOrchestrator
 
 # Import all tool modules
-from planning_agent.tools import application, jobs, dimensions, data, variables, documents, snapshots, feedback, discovery, inference
+from planning_agent.tools import application, jobs, dimensions, data, variables, documents, snapshots, feedback, discovery, inference, valid_intersections
 
 # Global state
 _planning_client: Optional[PlanningClient] = None
@@ -63,6 +63,16 @@ Discovery tools for custom/freeform apps (start here if you don't know the app s
 - profile_data: Sample data to find where values exist in the application
 - smart_retrieve_dynamic: Query data from any custom app with dynamic dimension handling
 - export_app_metadata: Export full metadata for offline analysis
+
+Valid Intersection tools (validate dimension combinations before data operations):
+- export_valid_intersections: Export valid intersection groups from EPM to ZIP file
+- import_valid_intersections: Import valid intersection groups from ZIP file
+- get_valid_intersection_groups: Get valid intersection groups metadata
+- validate_intersection: Validate if a dimension member combination is valid
+- validate_pov: Simplified validation for Entity-CostCenter-Region combination
+- discover_valid_intersections: Discover valid intersections by testing combinations
+- get_cached_valid_intersections: Get cached valid intersections from local database
+- suggest_valid_pov: Suggest a valid POV combination for an entity
 """
 
 
@@ -98,6 +108,7 @@ async def initialize_agent(cfg: Optional[PlanningConfig] = None) -> str:
     snapshots.set_client(_planning_client)
     discovery.set_client(_planning_client)
     inference.set_client(_planning_client)
+    valid_intersections.set_client(_planning_client)
     # feedback tool doesn't need client, it uses services
 
     # Initialize feedback service
@@ -135,6 +146,7 @@ async def initialize_agent(cfg: Optional[PlanningConfig] = None) -> str:
             documents.set_app_name(_app_name)
             discovery.set_app_name(_app_name)
             inference.set_app_name(_app_name)
+            valid_intersections.set_app_name(_app_name)
 
             return _app_name
         return "Connected (no apps found)"
@@ -262,6 +274,15 @@ TOOL_HANDLERS = {
     "infer_valid_pov": inference.infer_valid_pov,
     "load_metadata_cache": inference.load_metadata_cache,
     "get_cache_stats": inference.get_cache_stats,
+    # Valid Intersection tools
+    "export_valid_intersections": valid_intersections.export_valid_intersections,
+    "import_valid_intersections": valid_intersections.import_valid_intersections,
+    "get_valid_intersection_groups": valid_intersections.get_valid_intersection_groups,
+    "validate_intersection": valid_intersections.validate_intersection,
+    "validate_pov": valid_intersections.validate_pov,
+    "discover_valid_intersections": valid_intersections.discover_valid_intersections,
+    "get_cached_valid_intersections": valid_intersections.get_cached_valid_intersections,
+    "suggest_valid_pov": valid_intersections.suggest_valid_pov,
 }
 
 ALL_TOOL_DEFINITIONS = (
@@ -275,6 +296,7 @@ ALL_TOOL_DEFINITIONS = (
     feedback.TOOL_DEFINITIONS +
     discovery.TOOL_DEFINITIONS +
     inference.TOOL_DEFINITIONS +
+    valid_intersections.TOOL_DEFINITIONS +
     [AGENTIC_TOOL_DEFINITION]
 )
 
