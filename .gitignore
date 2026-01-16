@@ -39,6 +39,7 @@ data/*.db
 # Local config
 mcp.json
 .env
+.claude/settings.local.json
 
 # IDEs
 .vscode/
