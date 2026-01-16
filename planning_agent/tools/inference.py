@@ -203,8 +203,12 @@ async def infer_valid_pov(entity: str, account: Optional[str] = None, use_cache:
                 "confidence": "high"
             }
     
-    defaults = {"E501": {"cost_center": "CC1121", "region": "R131"}}
-    entity_defaults = defaults.get(entity, {"cost_center": "CC1121", "region": "R131"})
+    defaults = {
+        "E501": {"cost_center": "CC1121", "region": "R131"},
+        "E502": {"cost_center": "CC2110", "region": "R131"},
+        "E503": {"cost_center": "CC3210", "region": "R002"}
+    }
+    entity_defaults = defaults.get(entity, {"cost_center": "CC9999", "region": "R131"})
     
     return {
         "status": "success", "source": "defaults",
