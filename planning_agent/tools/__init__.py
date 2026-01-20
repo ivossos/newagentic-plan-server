@@ -1,4 +1,4 @@
-"""Planning ADK Tools - 30+ tools for Oracle Planning operations."""
+"""Planning ADK Tools - 40+ tools for Oracle Planning operations."""
 
 from planning_agent.tools import (
     application,
@@ -12,6 +12,9 @@ from planning_agent.tools import (
     discovery,
     inference,
     valid_intersections,
+    personalization,
+    memo,
+    exploration,
 )
 
 __all__ = [
@@ -26,4 +29,7 @@ __all__ = [
     "discovery",
     "inference",
     "valid_intersections",
+    "personalization",
+    "memo",
+    "exploration",
 ]

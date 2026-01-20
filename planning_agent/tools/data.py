@@ -18,6 +18,42 @@ def set_app_name(app_name: str):
     _app_name = app_name
 
 
+def _resolve_member(
+    fuzzy_input: str,
+    dimension: Optional[str] = None,
+    confidence_threshold: float = 0.5
+) -> str:
+    """Resolve fuzzy member input to exact member name using semantic search.
+
+    Args:
+        fuzzy_input: User's approximate member name
+        dimension: Optional dimension to constrain search
+        confidence_threshold: Minimum score to accept match
+
+    Returns:
+        Resolved member name or original input if no match
+    """
+    try:
+        from planning_agent.services.semantic_search import get_semantic_search_service
+
+        service = get_semantic_search_service()
+        if not service:
+            return fuzzy_input
+
+        result = service.resolve_member(
+            fuzzy_input=fuzzy_input,
+            dimension=dimension,
+            confidence_threshold=confidence_threshold
+        )
+
+        if result:
+            return result["member_name"]
+
+        return fuzzy_input
+    except Exception:
+        return fuzzy_input
+
+
 def _build_grid_definition(
     account: str,
     entity: str,
@@ -472,6 +508,102 @@ async def clear_data(
     return {"status": "success", "data": result}
 
 
+async def smart_retrieve_semantic(
+    account_query: str,
+    entity_query: str = "E501",
+    period: str = "YearTotal",
+    years: str = "FY25",
+    scenario_query: str = "Actual",
+    version: str = "Final",
+    currency: str = "USD",
+    cost_center: str = "CC9999",
+    future1: str = "Total Plan",
+    region: str = "R131",
+    plan_type: str = "FinPlan"
+) -> dict[str, Any]:
+    """Smart data retrieval with semantic member resolution / Recuperacao inteligente com resolucao semantica.
+
+    Like smart_retrieve, but uses semantic search to resolve fuzzy/natural language
+    member names to exact member names. Useful when users don't know exact member names.
+
+    Examples:
+    - account_query="revenue" -> resolves to "400000"
+    - entity_query="chicago" -> resolves to "E501"
+    - scenario_query="actuals" -> resolves to "Actual"
+
+    Args:
+        account_query: Account member or natural language query (e.g., 'revenue', '400000', 'rooms revenue').
+        entity_query: Entity member or query (default: 'E501').
+        period: The Period member (default: 'YearTotal').
+        years: The Years member (default: 'FY25').
+        scenario_query: Scenario member or query (default: 'Actual').
+        version: The Version member (default: 'Final').
+        currency: The Currency member (default: 'USD').
+        cost_center: The CostCenter member (default: 'CC9999').
+        future1: The Future1 member (default: 'Total Plan').
+        region: The Region member (default: 'R131').
+        plan_type: The plan type (default: 'FinPlan').
+
+    Returns:
+        dict: The retrieved data with resolved member names.
+    """
+    # Resolve fuzzy inputs to exact member names
+    account = _resolve_member(account_query, "Account")
+    entity = _resolve_member(entity_query, "Entity")
+    scenario = _resolve_member(scenario_query, "Scenario")
+
+    grid_definition = _build_grid_definition(
+        account=account,
+        entity=entity,
+        period=period,
+        years=years,
+        scenario=scenario,
+        version=version,
+        currency=currency,
+        cost_center=cost_center,
+        future1=future1,
+        region=region
+    )
+
+    try:
+        result = await _client.export_data_slice(_app_name, plan_type, grid_definition)
+
+        # Extract value from result
+        value = None
+        if result and "rows" in result and len(result["rows"]) > 0:
+            row = result["rows"][0]
+            if "data" in row and len(row["data"]) > 0:
+                try:
+                    value = float(row["data"][0])
+                except (ValueError, TypeError):
+                    value = row["data"][0]
+
+        return {
+            "status": "success",
+            "data": result,
+            "value": value,
+            "pov": {
+                "years": years,
+                "period": period,
+                "scenario": scenario,
+                "version": version,
+                "currency": currency,
+                "entity": entity,
+                "cost_center": cost_center,
+                "future1": future1,
+                "region": region,
+                "account": account
+            },
+            "resolved_from": {
+                "account_query": account_query,
+                "entity_query": entity_query,
+                "scenario_query": scenario_query
+            }
+        }
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
 TOOL_DEFINITIONS = [
     {
         "name": "export_data_slice",
@@ -675,6 +807,60 @@ TOOL_DEFINITIONS = [
                 "year": {"type": "string", "description": "Year to clear"},
                 "period": {"type": "string", "description": "Period to clear"},
             },
+        },
+    },
+    {
+        "name": "smart_retrieve_semantic",
+        "description": "Smart data retrieval with semantic member resolution - accepts natural language queries for accounts, entities, and scenarios / Recuperacao inteligente com resolucao semantica",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "account_query": {
+                    "type": "string",
+                    "description": "Account member or natural language query (e.g., 'revenue', 'rooms', 'total revenue', '400000')",
+                },
+                "entity_query": {
+                    "type": "string",
+                    "description": "Entity member or query (e.g., 'chicago', 'E501', 'miami')",
+                },
+                "period": {
+                    "type": "string",
+                    "description": "The Period member (default: 'YearTotal')",
+                },
+                "years": {
+                    "type": "string",
+                    "description": "The Years member (default: 'FY25')",
+                },
+                "scenario_query": {
+                    "type": "string",
+                    "description": "Scenario member or query (e.g., 'actual', 'forecast', 'actuals')",
+                },
+                "version": {
+                    "type": "string",
+                    "description": "The Version member (default: 'Final')",
+                },
+                "currency": {
+                    "type": "string",
+                    "description": "The Currency member (default: 'USD')",
+                },
+                "cost_center": {
+                    "type": "string",
+                    "description": "The CostCenter member (default: 'CC9999')",
+                },
+                "future1": {
+                    "type": "string",
+                    "description": "The Future1 member (default: 'Total Plan')",
+                },
+                "region": {
+                    "type": "string",
+                    "description": "The Region member (default: 'R131')",
+                },
+                "plan_type": {
+                    "type": "string",
+                    "description": "The plan type (default: 'FinPlan')",
+                },
+            },
+            "required": ["account_query"],
         },
     },
 ]

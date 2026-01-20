@@ -15,10 +15,23 @@ from planning_agent.services.rl_service import (
     init_rl_service,
     get_rl_service
 )
+from planning_agent.services.semantic_search import (
+    init_semantic_search,
+    get_semantic_search_service,
+    index_from_csvs
+)
+from planning_agent.services.personalization_service import (
+    init_personalization_service,
+    get_personalization_service
+)
 from planning_agent.intelligence.orchestrator import PlanningOrchestrator
 
 # Import all tool modules
-from planning_agent.tools import application, jobs, dimensions, data, variables, documents, snapshots, feedback, discovery, inference, valid_intersections
+from planning_agent.tools import (
+    application, jobs, dimensions, data, variables, documents, snapshots,
+    feedback, discovery, inference, valid_intersections,
+    personalization, memo, exploration
+)
 
 # Global state
 _planning_client: Optional[PlanningClient] = None
@@ -48,7 +61,7 @@ Available tools:
 - get_application_info, get_rest_api_version: App details
 - list_jobs, get_job_status, execute_job: Monitor and run jobs/rules
 - get_dimensions, get_members, get_member: Explore dimensions
-- export_data_slice, smart_retrieve, smart_retrieve_revenue, smart_retrieve_monthly, smart_retrieve_variance: Query data
+- export_data_slice, smart_retrieve, smart_retrieve_revenue, smart_retrieve_monthly, smart_retrieve_variance, smart_retrieve_semantic: Query data
 - copy_data, clear_data: Data management
 - get_substitution_variables, set_substitution_variable: Sub vars
 - get_documents, get_snapshots: Library management
@@ -73,6 +86,22 @@ Valid Intersection tools (validate dimension combinations before data operations
 - discover_valid_intersections: Discover valid intersections by testing combinations
 - get_cached_valid_intersections: Get cached valid intersections from local database
 - suggest_valid_pov: Suggest a valid POV combination for an entity
+
+Personalization tools (user preferences and onboarding):
+- get_personalization_status: Get onboarding checklist progress
+- update_personalization_item: Mark checklist items complete with values
+- set_personalization_preference: Store user preferences
+- get_personalization_preferences: Retrieve all user preferences
+
+Document generation tools (Word documents):
+- generate_system_pitch: Create 1-page system overview document
+- generate_investment_memo: Create 2-page financial analysis memo
+
+Semantic search tools (natural language member resolution):
+- search_members: Search for members using natural language queries
+- resolve_member: Resolve fuzzy input to exact member names
+- get_semantic_index_stats: View semantic index statistics
+- reindex_dimension: Re-index dimension from CSV metadata
 """
 
 
@@ -132,6 +161,25 @@ async def initialize_agent(cfg: Optional[PlanningConfig] = None) -> str:
         except Exception as e:
             print(f"Warning: Could not initialize RL service: {e}", file=sys.stderr)
 
+    # Initialize semantic search service
+    try:
+        semantic_service = init_semantic_search(use_config.database_url)
+        if semantic_service:
+            # Index from CSVs if no dimensions indexed yet
+            indexed = semantic_service.get_indexed_dimensions()
+            if not indexed:
+                index_results = index_from_csvs(semantic_service)
+                if index_results:
+                    print(f"Indexed dimensions for semantic search: {list(index_results.keys())}", file=sys.stderr)
+    except Exception as e:
+        print(f"Warning: Could not initialize semantic search service: {e}", file=sys.stderr)
+
+    # Initialize personalization service
+    try:
+        init_personalization_service(use_config.database_url)
+    except Exception as e:
+        print(f"Warning: Could not initialize personalization service: {e}", file=sys.stderr)
+
     # Try to connect and get application name
     try:
         apps = await _planning_client.get_applications()
@@ -147,6 +195,13 @@ async def initialize_agent(cfg: Optional[PlanningConfig] = None) -> str:
             discovery.set_app_name(_app_name)
             inference.set_app_name(_app_name)
             valid_intersections.set_app_name(_app_name)
+            memo.set_app_name(_app_name)
+            memo.set_client(_planning_client)
+
+            # Set app name in personalization service
+            personalization_service = get_personalization_service()
+            if personalization_service:
+                personalization_service.set_app_name(_app_name)
 
             return _app_name
         return "Connected (no apps found)"
@@ -248,6 +303,7 @@ TOOL_HANDLERS = {
     "smart_retrieve_revenue": data.smart_retrieve_revenue,
     "smart_retrieve_monthly": data.smart_retrieve_monthly,
     "smart_retrieve_variance": data.smart_retrieve_variance,
+    "smart_retrieve_semantic": data.smart_retrieve_semantic,
     "copy_data": data.copy_data,
     "clear_data": data.clear_data,
     "get_substitution_variables": variables.get_substitution_variables,
@@ -283,6 +339,19 @@ TOOL_HANDLERS = {
     "discover_valid_intersections": valid_intersections.discover_valid_intersections,
     "get_cached_valid_intersections": valid_intersections.get_cached_valid_intersections,
     "suggest_valid_pov": valid_intersections.suggest_valid_pov,
+    # Personalization tools
+    "get_personalization_status": personalization.get_personalization_status,
+    "update_personalization_item": personalization.update_personalization_item,
+    "set_personalization_preference": personalization.set_personalization_preference,
+    "get_personalization_preferences": personalization.get_personalization_preferences,
+    # Document generation tools
+    "generate_system_pitch": memo.generate_system_pitch,
+    "generate_investment_memo": memo.generate_investment_memo,
+    # Semantic search / exploration tools
+    "search_members": exploration.search_members,
+    "resolve_member": exploration.resolve_member,
+    "get_semantic_index_stats": exploration.get_semantic_index_stats,
+    "reindex_dimension": exploration.reindex_dimension,
 }
 
 ALL_TOOL_DEFINITIONS = (
@@ -297,6 +366,9 @@ ALL_TOOL_DEFINITIONS = (
     discovery.TOOL_DEFINITIONS +
     inference.TOOL_DEFINITIONS +
     valid_intersections.TOOL_DEFINITIONS +
+    personalization.TOOL_DEFINITIONS +
+    memo.TOOL_DEFINITIONS +
+    exploration.TOOL_DEFINITIONS +
     [AGENTIC_TOOL_DEFINITION]
 )
 
